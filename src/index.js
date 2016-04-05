@@ -24,6 +24,10 @@ const boolAttrs =
   "nohref noresize noshade novalidate nowrap open pauseonexit readonly required reversed " +
   "scoped seamless selected sortable spellcheck translate truespeed typemustmatch visible"
 
+const noBubbleEvents =
+  "load unload scroll focus blur DOMNodeRemovedFromDocument DOMNodeInsertedIntoDocument " +
+  "loadstart progress error abort load loadend"
+
 const htmlProps =
   "value"
 
@@ -36,10 +40,17 @@ const boolAttrByName =
 const propsByName =
   zipObj(htmlProps.split(" ").map(a => [a.trim(), true]))
 
+const noBubblesByName =
+  zipObj(noBubbleEvents.split(" ").map(a => [a.trim(), true]))
+
 const isHtmlProp = key => propsByName[key]
 
 const isAttr = attr => {
   return attrByName[attr] || (attr.indexOf("data-") === 0 && attr.length > 5)
+}
+
+const bubbles = event => {
+  return !noBubblesByName[event]
 }
 
 const toClassObj = (klass) => {
@@ -218,8 +229,9 @@ export default function makeSnabbdom(rootElem) {
       return O.using(newSource, withSource).shareReplay(1)
     }
 
-    function events(vdom$, selector, eventName) {
-      const newListener = () => new EventListener(selector, eventName, false)
+    function events(vdom$, selector, eventName, useCapture) {
+      useCapture = useCapture === undefined ? !bubbles(eventName) : !!useCapture
+      const newListener = () => new EventListener(selector, eventName, useCapture)
       const listen = listener => vdom$
         .distinctUntilChanged(vnode => vnode.data.eventSource)
         .map(vnode => {
