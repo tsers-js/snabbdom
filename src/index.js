@@ -1,7 +1,7 @@
-import {Observable as O, Subject} from "rx"
-import selmatch from "matches-selector"
+import {Observable as O} from "rx"
 import dom from "./dom"
 import {isVNode, VNode} from "./vnode"
+import {zipObj, isPlainObj, isStr, isArray, isPrimitive, keys, extend} from "./util"
 import {EventListener, EventSource} from "./events"
 
 const htmlAttrs =
@@ -128,17 +128,23 @@ const updateStyle = (old, cur) => {
 }
 
 const attachEvents = vnode => {
-  vnode.data.eventSource && vnode.data.eventSource.attach(vnode.elm)
+  if (vnode.data && vnode.data.eventSource) {
+    vnode.data.eventSource.attach(vnode.elm)
+  }
 }
 
 const reattachEvents = (old, cur) => {
-  if (cur.data.eventSource !== old.data.eventSource) {
-    old.data.eventSource && old.data.eventSource.detach()
-    cur.data.eventSource && cur.data.eventSource.attach(cur.elm)
+  const curSrc = (cur.data || {}).eventSource
+  const oldSrc = (old.data || {}).eventSource
+  if (curSrc !== oldSrc) {
+    oldSrc && oldSrc.detach(cur.elm)
+    curSrc && curSrc.reattach(cur.elm)
   }
 }
 const detachEvents = vnode => {
-  vnode.data.eventSource && vnode.data.eventSource.detach()
+  if (vnode.data && vnode.data.eventSource) {
+    vnode.data.eventSource.detach(vnode.elm)
+  }
 }
 
 
@@ -156,6 +162,8 @@ export default function makeSnabbdom(rootElem) {
           updateAttrs(old, cur)
           updateKlass(old, cur)
           updateStyle(old, cur)
+        },
+        postpatch(old, cur) {
           reattachEvents(old, cur)
         },
         destroy(vnode) {
