@@ -15,7 +15,7 @@ const htmlAttrs =
   "ping placeholder poster preload radiogroup readonly rel required reversed rows " +
   "rowspan sandbox scope scoped seamless selected shape size sizes span spellcheck " +
   "src srcdoc srclang srcset start step summary tabindex target title type " +
-  "usemap value width wrap"
+  "usemap width wrap"
 
 const boolAttrs =
   "allowfullscreen async autofocus autoplay checked compact controls declare default " +
@@ -24,11 +24,19 @@ const boolAttrs =
   "nohref noresize noshade novalidate nowrap open pauseonexit readonly required reversed " +
   "scoped seamless selected sortable spellcheck translate truespeed typemustmatch visible"
 
+const htmlProps =
+  "value"
+
 const attrByName =
   zipObj(htmlAttrs.split(" ").map(a => [a.trim(), true]))
 
 const boolAttrByName =
   zipObj(boolAttrs.split(" ").map(a => [a.trim(), true]))
+
+const propsByName =
+  zipObj(htmlProps.split(" ").map(a => [a.trim(), true]))
+
+const isHtmlProp = key => propsByName[key]
 
 const isAttr = attr => {
   return attrByName[attr] || (attr.indexOf("data-") === 0 && attr.length > 5)
@@ -78,13 +86,16 @@ function h(tag, props, children) {
 
   // parse props
   const key = props.key
-  const attrs = {}
+  const attrs = {}, htmlProps = {}
   const style = props.style || {}
   const klass = toClassObj(props.class || props.className)
-  keys(props).forEach(k => isAttr(k) && (attrs[k] = props[k]))
+  keys(props).forEach(k => {
+    isAttr(k) && (attrs[k] = props[k])
+    isHtmlProp(k) && (htmlProps[k] = props[k])
+  })
 
   const data = {
-    key, attrs, style, klass
+    key, attrs, style, klass, props: htmlProps
   }
 
   return VNode(tag, data, children)
@@ -101,6 +112,18 @@ const updateAttrs = (old, cur) => {
   }
   for (key in oldAttrs) {
     if (!(key in attrs)) elm.removeAttribute(key)
+  }
+}
+
+const updateProps = (old, cur) => {
+  const {elm} = cur
+  let key, oldProps = old.data.props || {}, props = cur.data.props || {}
+  for (key in props) {
+    var c = props[key], o = oldProps[key]
+    o !== c && (elm[key] = c)
+  }
+  for (key in oldProps) {
+    if (!(key in props)) delete elm[key]
   }
 }
 
@@ -154,12 +177,14 @@ export default function makeSnabbdom(rootElem) {
       {
         create(old, cur) {
           updateAttrs(old, cur)
+          updateProps(old, cur)
           updateKlass(old, cur)
           updateStyle(old, cur)
           attachEvents(cur)
         },
         update(old, cur) {
           updateAttrs(old, cur)
+          updateProps(old, cur)
           updateKlass(old, cur)
           updateStyle(old, cur)
         },
