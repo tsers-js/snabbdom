@@ -65,13 +65,14 @@ function init(modules, api) {
       // Parse selector
       var hashIdx = sel.indexOf('#');
       var dotIdx = sel.indexOf('.', hashIdx);
-      var hash = hashIdx > 0 ? hashIdx : sel.length;
-      var dot = dotIdx > 0 ? dotIdx : sel.length;
+      var hash = hashIdx >= 0 ? hashIdx : sel.length;
+      var dot = dotIdx >= 0 ? dotIdx : sel.length;
       var tag = hashIdx !== -1 || dotIdx !== -1 ? sel.slice(0, Math.min(hash, dot)) : sel;
+      tag = tag || "div";
       elm = vnode.elm = isDef(data) && isDef(i = data.ns) ? api.createElementNS(i, tag)
         : api.createElement(tag);
       if (hash < dot) elm.id = sel.slice(hash + 1, dot);
-      if (dotIdx > 0) elm.className = sel.slice(dot+1).replace(/\./g, ' ');
+      if (dotIdx >= 0) elm.className = sel.slice(dot+1).replace(/\./g, ' ');
       if (is.array(children)) {
         for (i = 0; i < children.length; ++i) {
           api.appendChild(elm, createElm(children[i], insertedVnodeQueue));
