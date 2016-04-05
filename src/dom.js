@@ -189,6 +189,14 @@ function init(modules, api) {
     }
   }
 
+  function copyElm(from, to) {
+    var i, children = to.children
+    to.elm = from.elm
+    if (children) {
+      for (i = 0; i < children.length; i++) copyElm(from.children[i], children[i])
+    }
+  }
+
   function patchVnode(oldVnode, vnode, insertedVnodeQueue) {
     var i, hook;
     if (isDef(i = vnode.data) && isDef(hook = i.hook) && isDef(i = hook.prepatch)) {
@@ -210,7 +218,10 @@ function init(modules, api) {
     //
     // Hence we make a shallow clone of the new vnode and preserver speed optimization
     // by comparing vnode._id identities (extension to VNode, see vnode.js)
-    if (oldVnode._id === vnode._id) return;
+    if (oldVnode._id === vnode._id) {
+      copyElm(oldVnode, vnode);
+      return;
+    }
     var elm = vnode.elm = oldVnode.elm, oldCh = oldVnode.children, ch = vnode.children;
     if (!sameVnode(oldVnode, vnode)) {
       var parentElm = api.parentNode(oldVnode.elm);
