@@ -252,6 +252,8 @@ export default function makeSnabbdom(rootElem) {
       events,
       prepare
     }
+    // for convenience
+    Transforms.DOM = Transforms
 
     function executor(vdom$) {
       const elm = isStr(rootElem) ? document.querySelector(rootElem) : rootElem
