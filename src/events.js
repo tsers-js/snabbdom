@@ -53,23 +53,25 @@ extend(EventSource.prototype, {
     this.pending = []
   },
   reattach(elm) {
-    this.detach()
+    this.detach(this.elm)
     this.attach(elm)
   },
-  detach() {
+  detach(elm) {
     const ll = this.listeners
-    if (this.elm) {
+    if (elm && elm === this.elm) {
       ll.forEach(({type, fn, useCapture}) => {
         this.elm.removeEventListener(type, fn, useCapture)
       })
+      this.elm = void 0
+      this.listeners.forEach(l => this.pending.push(l))
+      this.listeners = []
     }
-    this.elm = void 0
-    this.listeners.forEach(l => this.pending.push(l))
-    this.listeners = []
   },
   dispose() {
     console.log("dispose source")  // eslint-disable-line
-    this.detach()
+    this.detach(this.elm)
     this.pending = []
+    this.listeners = []
+    this.elm = void 0
   }
 })
