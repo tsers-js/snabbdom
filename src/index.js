@@ -74,6 +74,7 @@ function h(tag, props, children) {
   let temp = []
   for (var i = 0; i < children.length; i++) {
     const child = children[i]
+    if (child === undefined || child === null || child === false) continue
     if (isVNode(child)) {
       temp.push(child)
     } else if (isPrimitive(child)) {
