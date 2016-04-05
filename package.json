@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": false,
   "description": "TSERSful Snabbdom interpreter",
-  "main": "dist/tsers.snabbdom.js",
+  "main": "lib/index.js",
   "author": "Matti Lankinen <m.lankinen@iki.fi> (https://github.com/milankinen)",
   "license": "MIT",
   "repository": {
@@ -21,18 +21,15 @@
   ],
   "scripts": {
     "prepublish": "npm test && npm run dist",
-    "test": "npm run lint",
+    "test": "npm run lint && npm run mocha:all",
     "lint": "eslint src test",
     "mocha:all": "npm run mocha -- --recursive test",
     "mocha": "mocha --compilers js:babel-register -s 500",
     "dist": "npm run build",
-    "build": "mkdir -p dist && rm -f dist/* && babel src/index.js > dist/tsers.snabbdom.js",
-    "minify": "uglifyjs -c -m -- dist/tsers.snabbdom.js > dist/tsers.snabbdom.min.js"
+    "build": "mkdir -p lib && rm -f lib/* && babel src --out-dir lib"
   },
   "dependencies": {
     "matches-selector": "^1.0.0",
-    "parse-selector": "^1.0.0",
-    "parse-tag": "^1.0.0",
     "snabbdom": "^0.4.2"
   },
   "peerDependencies": {
