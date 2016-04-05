@@ -1,62 +1,8 @@
-import {Observable as O} from "rx"
-//import selmatch from "matches-selector"
-import snabb from "snabbdom"
-
-
-const zipObj = pairs => {
-  const o = {}
-  pairs.forEach(([k, v]) => o[k] = v)
-  return o
-}
-
-const VNODE_ID = {}
-
-function VNode(sel, data, children, text, elm) {
-  const key = data === undefined ? undefined : data.key;
-  return {
-    sel: sel, data: data, children: children,
-    text: text, elm: elm, key: key, ID: VNODE_ID
-  }
-}
-
-const isArray = x => x && Array.isArray(x)
-const isStr = x => x && typeof x === "string"
-const isPlainObj = x => x && x.prototype && x.prototype.constructor === Object
-const isPrimitive = x => typeof x === "string" || typeof x === "number"
-const isVNode = x => x && x.ID === VNODE_ID
-
-const keys = x => x ? Object.keys(x) : []
-
-/*
-const values = obj => keys(obj).map(k => obj[k])
-
-const extend = Object.assign
-
-const matches = (ev, sel) => !sel || (ev.target && selmatch(ev.target, sel))
-
-const shallowEq = (a, b) => {
-  const aKeys = keys(a), bKeys = keys(b)
-  if (aKeys.length !== bKeys.length) return false
-  for (let i = 0; i < aKeys.length; i++) {
-    if (a[aKeys[i]] !== b[aKeys[i]]) return false
-  }
-  return true
-}
-
-const rm = (arr, obj) => {
-  const idx = arr.indexOf(obj)
-  if (idx !== -1) arr.splice(idx, 1)
-  return arr.length
-}
-*/
-
-const toClassObj = (klass) => {
-  let i, list, c, res = {}
-  for (i = 0, list = (klass || "").split(" "); i < list.length; i++) {
-    if (c = list[i].trim()) res[c] = true   // eslint-disable-line
-  }
-  return res
-}
+import {Observable as O, Subject} from "rx"
+import selmatch from "matches-selector"
+import dom from "./dom"
+import {isVNode, VNode} from "./vnode"
+import {EventListener, EventSource} from "./events"
 
 const htmlAttrs =
   "accept accept-charset accesskey action align alt async autocomplete autofocus " +
@@ -78,11 +24,23 @@ const boolAttrs =
   "nohref noresize noshade novalidate nowrap open pauseonexit readonly required reversed " +
   "scoped seamless selected sortable spellcheck translate truespeed typemustmatch visible"
 
-const attrByName = zipObj(htmlAttrs.split(" ").map(a => [a.trim(), true]))
-const boolAttrByName = zipObj(boolAttrs.split(" ").map(a => [a.trim(), true]))
+const attrByName =
+  zipObj(htmlAttrs.split(" ").map(a => [a.trim(), true]))
 
-const isAttr = attr =>
-attrByName[attr] || (attr.indexOf("data-") && attr.length > 5)
+const boolAttrByName =
+  zipObj(boolAttrs.split(" ").map(a => [a.trim(), true]))
+
+const isAttr = attr => {
+  return attrByName[attr] || (attr.indexOf("data-") === 0 && attr.length > 5)
+}
+
+const toClassObj = (klass) => {
+  let i, list, c, res = {}
+  for (i = 0, list = (klass || "").split(" "); i < list.length; i++) {
+    if (c = list[i].trim()) res[c] = true   // eslint-disable-line
+  }
+  return res
+}
 
 function h(tag, props, children) {
   if (arguments.length === 1) {
@@ -119,13 +77,14 @@ function h(tag, props, children) {
   children = temp
 
   // parse props
+  const key = props.key
   const attrs = {}
   const style = props.style || {}
   const klass = toClassObj(props.class || props.className)
   keys(props).forEach(k => isAttr(k) && (attrs[k] = props[k]))
 
   const data = {
-    attrs, style, klass
+    key, attrs, style, klass
   }
 
   return VNode(tag, data, children)
@@ -144,6 +103,7 @@ const updateAttrs = (old, cur) => {
     if (!(key in attrs)) elm.removeAttribute(key)
   }
 }
+
 const updateKlass = (old, cur) => {
   const {elm} = cur
   let kl, oldKlass = old.data.klass || {}, klass = cur.data.klass || {}
@@ -154,6 +114,7 @@ const updateKlass = (old, cur) => {
     if (!(kl in oldKlass)) elm.classList.add(kl)
   }
 }
+
 const updateStyle = (old, cur) => {
   const {elm} = cur
   let s, oldStyle = old.data.style || {}, style = cur.data.style || {}
@@ -166,32 +127,66 @@ const updateStyle = (old, cur) => {
   }
 }
 
+const attachEvents = vnode => {
+  vnode.data.eventSource && vnode.data.eventSource.attach(vnode.elm)
+}
+
+const reattachEvents = (old, cur) => {
+  if (cur.data.eventSource !== old.data.eventSource) {
+    old.data.eventSource && old.data.eventSource.detach()
+    cur.data.eventSource && cur.data.eventSource.attach(cur.elm)
+  }
+}
+const detachEvents = vnode => {
+  vnode.data.eventSource && vnode.data.eventSource.detach()
+}
+
+
 export default function makeSnabbdom(rootElem) {
   return function snabbdom() {
-    const patch = snabb.init([
+    const patch = dom.init([
       {
         create(old, cur) {
           updateAttrs(old, cur)
           updateKlass(old, cur)
           updateStyle(old, cur)
+          attachEvents(cur)
         },
         update(old, cur) {
           updateAttrs(old, cur)
           updateKlass(old, cur)
           updateStyle(old, cur)
+          reattachEvents(old, cur)
         },
-        destroy() {
-
+        destroy(vnode) {
+          detachEvents(vnode)
         }
       }
     ])
 
     function prepare(vdom$) {
-      return vdom$
+      const newSource = () => new EventSource()
+      const withSource = src => vdom$
+        .merge(O.never())
+        .map(vnode => (vnode.data.eventSource = vnode.data.eventSource || src) && vnode)
+      return O.using(newSource, withSource).shareReplay(1)
     }
 
-    function events(/*vdom$, selector, eventName*/) {
-      return O.never()
+    function events(vdom$, selector, eventName) {
+      const newListener = () => new EventListener(selector, eventName, false)
+      const listen = listener => vdom$
+        .distinctUntilChanged(vnode => vnode.data.eventSource)
+        .map(vnode => {
+          if (!vnode.data.eventSource) {
+            console.warn(                                 // eslint-disable-line
+              "DOM.events :: VDOM is not prepared for event listening.",
+              "Perhaps you forgot to call DOM.prepare(vdom$)?"
+            )
+            return O.never()
+          }
+          return vnode.data.eventSource.listen(listener)
+        })
+      return O.using(newListener, listen).switch().share()
     }
 
     const Transforms = {
