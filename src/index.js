@@ -164,6 +164,12 @@ export default function makeSnabbdom(rootElem) {
       }
     ])
 
+    function cloneTree(vnode) {
+      const cloned = extend({}, vnode)
+      cloned.children = vnode.children && vnode.children.map(cloneTree)
+      return cloned
+    }
+
     function prepare(vdom$) {
       const newSource = () => new EventSource()
       const withSource = src => vdom$
@@ -199,6 +205,7 @@ export default function makeSnabbdom(rootElem) {
       const elm = isStr(rootElem) ? document.querySelector(rootElem) : rootElem
       let prev = elm
       const dispose = vdom$.subscribe(vnode => {
+        vnode = cloneTree(vnode)
         patch(prev, vnode)
         prev = vnode
       })
