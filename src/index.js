@@ -1,7 +1,7 @@
 import {Observable as O} from "rx"
 import dom from "./dom"
 import {isVNode, VNode} from "./vnode"
-import {zipObj, isPlainObj, isStr, isArray, isPrimitive, keys, extend} from "./util"
+import {zipObj, isPlainObj, isStr, isArray, isPrimitive, keys} from "./util"
 import {EventListener, EventSource} from "./events"
 
 const htmlAttrs =
@@ -199,9 +199,15 @@ export default function makeSnabbdom(rootElem) {
     ])
 
     function cloneTree(vnode) {
-      const cloned = extend({}, vnode)
-      cloned.children = vnode.children && vnode.children.map(cloneTree)
-      return cloned
+      return {
+        sel: vnode.sel,
+        data: vnode.data,
+        children: vnode.children && vnode.children.map(cloneTree),
+        text: vnode.text,
+        key: vnode.key,
+        ID: vnode.ID,
+        _id: vnode._id
+      }
     }
 
     function prepare(vdom$) {
