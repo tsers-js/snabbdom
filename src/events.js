@@ -13,7 +13,6 @@ export function EventListener(selector, type, useCapture) {
   this.sel = selector
   this.type = type
   this.useCapture = useCapture || false
-  console.log("new listener", this.type, this.sel)  // eslint-disable-line
 }
 extend(EventListener.prototype, {
   fn() {
@@ -23,7 +22,6 @@ extend(EventListener.prototype, {
     return this.s.asObservable()
   },
   dispose() {
-    console.log("dispose listener", this.type, this.sel)  // eslint-disable-line
     this.s && this.s.dispose()
     this.s = void 0
   }
@@ -31,7 +29,6 @@ extend(EventListener.prototype, {
 
 
 export function EventSource() {
-  console.log("new source")  // eslint-disable-line
   this.listeners = []
   this.pending = []
   this.elm = void 0
@@ -68,7 +65,6 @@ extend(EventSource.prototype, {
     }
   },
   dispose() {
-    console.log("dispose source")  // eslint-disable-line
     this.detach(this.elm)
     this.pending = []
     this.listeners = []
