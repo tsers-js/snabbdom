@@ -24,7 +24,7 @@ function createKeyToOldIdx(children, beginIdx, endIdx) {
   return map;
 }
 
-var hooks = ['create', 'update', 'remove', 'destroy', 'pre', 'post'];
+var hooks = ['create', 'update', 'postpatch', 'remove', 'destroy', 'pre', 'post'];
 
 function init(modules, api) {
   var i, j, cbs = {};
@@ -238,6 +238,7 @@ function init(modules, api) {
     } else if (oldVnode.text !== vnode.text) {
       api.setTextContent(elm, vnode.text);
     }
+    for (i = 0; i < cbs.postpatch.length; ++i) cbs.postpatch[i](oldVnode, vnode);
     if (isDef(hook) && isDef(i = hook.postpatch)) {
       i(oldVnode, vnode);
     }
