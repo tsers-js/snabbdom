@@ -1,4 +1,3 @@
-import {Subject} from "rx"
 import selmatch from "matches-selector"
 import {extend} from "./util"
 
@@ -8,22 +7,22 @@ const matches = (ev, sel) => {
 }
 
 
-export function EventListener(selector, type, useCapture) {
-  this.s = new Subject()
+export function EventListener(O, selector, type, useCapture) {
+  this.b = O.bus()
   this.sel = selector
   this.type = type
   this.useCapture = useCapture || false
 }
 extend(EventListener.prototype, {
   fn() {
-    return this.s ? (event => this.s && matches(event, this.sel) && this.s.onNext(event)) : (() => undefined)
+    return this.b ? (event => this.b && matches(event, this.sel) && this.b.next(event)) : (() => undefined)
   },
   obs() {
-    return this.s.asObservable()
+    return this.b.obs()
   },
   dispose() {
-    this.s && this.s.dispose()
-    this.s = void 0
+    this.b && this.b.completed()
+    this.b = void 0
   }
 })
 

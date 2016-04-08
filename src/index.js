@@ -1,4 +1,3 @@
-import {Observable as O} from "rx"
 import dom from "./dom"
 import {isVNode, VNode} from "./vnode"
 import {zipObj, isPlainObj, isStr, isArray, isPrimitive, keys} from "./util"
@@ -184,7 +183,7 @@ const detachEvents = vnode => {
 
 
 export default function makeSnabbdom(rootElem) {
-  return function snabbdom() {
+  return function snabbdom({O}) {
     const patch = dom.init([
       {
         create(old, cur) {
@@ -221,19 +220,27 @@ export default function makeSnabbdom(rootElem) {
       }
     }
 
+    function using(df, f) {
+      return O.create(o => {
+        const d = df()
+        o.next(f(d))
+        return () => d.dispose()
+      }).flatMapLatest(x => x)
+    }
+
     function prepare(vdom$) {
       const newSource = () => new EventSource()
-      const withSource = src => vdom$
-        .merge(O.never())
-        .map(vnode => (vnode.data.eventSource = vnode.data.eventSource || src) && vnode)
-      return O.using(newSource, withSource).shareReplay(1)
+      const withSource = src =>
+        O.merge([new O(vdom$), O.never()])
+          .map(vnode => (vnode.data.eventSource = vnode.data.eventSource || src) && vnode)
+      return using(newSource, withSource).toProperty().get()
     }
 
     function events(vdom$, selector, eventName, useCapture) {
       useCapture = useCapture === undefined ? !bubbles(eventName) : !!useCapture
-      const newListener = () => new EventListener(selector, eventName, useCapture)
-      const listen = listener => vdom$
-        .distinctUntilChanged(vnode => vnode.data.eventSource)
+      const newListener = () => new EventListener(O, selector, eventName, useCapture)
+      const listen = listener => new O(vdom$)
+        .skipDuplicates((a, b) => a.data.eventSource === b.data.eventSource)
         .map(vnode => {
           if (!vnode.data.eventSource) {
             console.warn(                                 // eslint-disable-line
@@ -244,7 +251,7 @@ export default function makeSnabbdom(rootElem) {
           }
           return vnode.data.eventSource.listen(listener)
         })
-      return O.using(newListener, listen).switch().share()
+      return using(newListener, listen).flatMapLatest(x => x).get()
     }
 
     const Transforms = {
@@ -258,17 +265,17 @@ export default function makeSnabbdom(rootElem) {
     function executor(vdom$) {
       const elm = isStr(rootElem) ? document.querySelector(rootElem) : rootElem
       let prev = elm
-      const dispose = vdom$.subscribe(vnode => {
-        vnode = cloneTree(vnode)
-        patch(prev, vnode)
-        prev = vnode
-      })
-      return {
-        dispose: () => {
-          dispose();
-          prev = null
+      const dispose = new O(vdom$).subscribe({
+        next: vnode => {
+          vnode = cloneTree(vnode)
+          patch(prev, vnode)
+          prev = vnode
         }
-      }
+      })
+      return O.disposeToSubscription(() => {
+        dispose()
+        prev = null
+      })
     }
 
     return [Transforms, executor]
