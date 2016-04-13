@@ -1,3 +1,4 @@
+import "setimmediate"
 import dom from "./dom"
 import {isVNode, VNode} from "./vnode"
 import {zipObj, isPlainObj, isStr, isArray, isPrimitive, keys} from "./util"
@@ -264,12 +265,17 @@ export default function makeSnabbdom(rootElem) {
 
     function executor(vdom$) {
       const elm = isStr(rootElem) ? document.querySelector(rootElem) : rootElem
+      let si
       let prev = elm
       const dispose = new O(vdom$).subscribe({
         next: vnode => {
-          vnode = cloneTree(vnode)
-          patch(prev, vnode)
-          prev = vnode
+          si && clearImmediate(si)
+          si = setImmediate(() => {
+            vnode = cloneTree(vnode)
+            patch(prev, vnode)
+            prev = vnode
+            si = void 0
+          })
         }
       })
       return O.disposeToSubscription(() => {
