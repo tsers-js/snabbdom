@@ -234,7 +234,7 @@ export default function makeSnabbdom(rootElem) {
       const withSource = src =>
         O.merge([new O(vdom$), O.never()])
           .map(vnode => (vnode.data.eventSource = vnode.data.eventSource || src) && vnode)
-      return using(newSource, withSource).toProperty().get()
+      return using(newSource, withSource).getp()
     }
 
     function events(vdom$, selector, eventName, useCapture) {
