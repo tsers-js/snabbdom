@@ -2,7 +2,7 @@ import {Observable as O} from "rx"
 import dom from "./dom"
 import {isVNode, VNode} from "./vnode"
 import {zipObj, isPlainObj, isStr, isArray, isPrimitive, keys} from "./util"
-import {EventListener, EventSource} from "./events"
+import {EventListener, EventSource, boundaryMakerProp} from "./events"
 
 const htmlAttrs =
   "accept accept-charset accesskey action align alt async autocomplete autofocus " +
@@ -225,7 +225,15 @@ export default function makeSnabbdom(rootElem) {
       const newSource = () => new EventSource()
       const withSource = src => vdom$
         .merge(O.never())
-        .map(vnode => (vnode.data.eventSource = vnode.data.eventSource || src) && vnode)
+        .map(vnode => {
+          vnode.data.eventSource = vnode.data.eventSource || src
+          vnode.data.props = {
+            ...vnode.data.props,
+            [boundaryMakerProp] : true
+          }
+
+          return vnode
+        })
       return O.using(newSource, withSource).shareReplay(1)
     }
 

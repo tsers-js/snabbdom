@@ -7,6 +7,25 @@ const matches = (ev, sel) => {
   return !sel || (ev.target && selmatch(ev.target, sel))
 }
 
+export const boundaryMakerProp = "_tsersComponentRoot"
+
+const isScopeBoundary = (el) => el.hasOwnProperty(boundaryMakerProp)
+
+const belongsToScope = (ev) => {
+  const scopeRoot = ev.currentTarget
+  let currentEl = ev.target
+  while(currentEl) {
+    if (currentEl === scopeRoot) {
+      return true
+    } else if (isScopeBoundary(currentEl)) {
+      return false
+    }
+    currentEl = currentEl.parentNode
+  }
+
+  return false
+}
+
 
 export function EventListener(selector, type, useCapture) {
   this.s = new Subject()
@@ -16,7 +35,12 @@ export function EventListener(selector, type, useCapture) {
 }
 extend(EventListener.prototype, {
   fn() {
-    return this.s ? (event => this.s && matches(event, this.sel) && this.s.onNext(event)) : (() => undefined)
+    return this.s ? (event => {
+      if (this.s && matches(event, this.sel) && 
+        belongsToScope(event)) {
+        this.s.onNext(event)
+      }
+    }) : (() => undefined)
   },
   obs() {
     return this.s.asObservable()
