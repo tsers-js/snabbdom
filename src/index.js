@@ -2,7 +2,7 @@ import "setimmediate"
 import dom from "./dom"
 import {isVNode, VNode} from "./vnode"
 import {zipObj, isPlainObj, isStr, isArray, isPrimitive, keys} from "./util"
-import {EventListener, EventSource} from "./events"
+import {EventListener, EventSource, boundaryMakerProp} from "./events"
 
 const htmlAttrs =
   "accept accept-charset accesskey action align alt async autocomplete autofocus " +
@@ -232,8 +232,14 @@ export default function makeSnabbdom(rootElem) {
     function prepare(vdom$) {
       const newSource = () => new EventSource()
       const withSource = src =>
-        O.merge([new O(vdom$), O.never()])
-          .map(vnode => (vnode.data.eventSource = vnode.data.eventSource || src) && vnode)
+        O.merge([new O(vdom$), O.never()]).map(vnode => {
+          vnode.data.eventSource = vnode.data.eventSource || src
+          vnode.data.props = {
+            ...vnode.data.props,
+            [boundaryMakerProp] : true
+          }
+          return vnode
+        })
       return using(newSource, withSource).getp()
     }
 
