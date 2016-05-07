@@ -1,6 +1,6 @@
 {
   "name": "@tsers/snabbdom",
-  "version": "1.0.0-alpha2",
+  "version": "1.0.0-alpha3",
   "private": false,
   "description": "TSERSful Snabbdom interpreter",
   "main": "lib/index.js",
