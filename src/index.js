@@ -154,7 +154,7 @@ const updateStyle = (old, cur) => {
   const {elm} = cur
   let s, oldStyle = old.data.style || {}, style = cur.data.style || {}
   for (s in style) {
-    var c = style[s], o = style[s]
+    var c = style[s], o = oldStyle[s]
     if (c !== o) elm.style[s] = c
   }
   for (s in oldStyle) {
